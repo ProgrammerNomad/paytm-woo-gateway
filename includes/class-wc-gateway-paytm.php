@@ -35,7 +35,9 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         $this->has_fields         = false;
         $this->method_title       = __( 'Paytm', 'paytm-woo-gateway' );
         $this->method_description = __( 'Pay with Paytm using various methods (Credit Card, Debit Card, Net Banking, UPI, Paytm Wallet)', 'paytm-woo-gateway' );
-        $this->supports           = array( 'products' );
+        
+        // Add support for blocks (important!)
+        $this->supports = array( 'products', 'blocks' ); 
 
         // Load the settings.
         $this->init_form_fields();
@@ -52,6 +54,8 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
         add_action( 'woocommerce_api_wc_gateway_paytm', array( $this, 'paytm_response' ) ); 
 
+        // Call init_supports() to declare block compatibility
+        $this->init_supports();  
     }
 
     public function init_form_fields() {
@@ -108,7 +112,7 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         $cust_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
         $cust_email = $order->get_billing_email();
         $cust_phone = $order->get_billing_phone();
-        // ... (other order details) ...
+        // ... (other order details as needed) ...
         // --- End Collect Order Details ---
 
 
@@ -146,7 +150,7 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         $order->update_status('on-hold', __( 'Awaiting Paytm payment', 'paytm-woo-gateway' ));
 
         // Remove cart
-        WC()->cart->empty_cart();
+        WC()->cart->empty_cart(); 
 
         // Return thank you redirect
         return array(
@@ -168,5 +172,39 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         // 1. Verify the response from Paytm (checksum verification)
         // 2. Update the order status based on the response
         // 3. Redirect the customer to the appropriate page (success/failure)
+    }
+
+    /**
+     * Declare compatibility with the block-based checkout.
+     *
+     * @return void
+     */
+    public function init_supports() { 
+        // Check for WooCommerce Blocks compatibility
+        if ( function_exists( 'wc_blocks_is_woocommerce_blocks_checkout' ) && wc_blocks_is_woocommerce_blocks_checkout() ) {
+            $this->declare_compatibility();
+        }
+    }
+
+    /**
+     * Declare compatibility with the block-based checkout.
+     *
+     * @return void
+     */
+    private function declare_compatibility() {
+        if ( ! class_exists( 'Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+            return;
+        }
+
+        Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', $this->id, true );
+    }
+
+    public function get_payment_method_data() {
+        return array(
+            'title' => $this->get_title(),
+            'description' => $this->get_description(),
+            'icon' => $this->get_icon(),
+            'supports' => $this->supports,
+        );
     }
 }
