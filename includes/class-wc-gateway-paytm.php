@@ -8,12 +8,34 @@ require_once plugin_dir_path( __FILE__ ) . 'PaytmChecksum.php';
 
 class WC_Gateway_Paytm extends WC_Payment_Gateway {
 
+    /**
+     * Merchant ID.
+     *
+     * @var string
+     */
+    public $merchant_id;
+
+    /**
+     * Merchant Key.
+     *
+     * @var string
+     */
+    public $merchant_key;
+
+    /**
+     * Test mode flag.
+     *
+     * @var bool
+     */
+    public $testmode; 
+
     public function __construct() {
         $this->id                 = 'paytm';
         $this->icon               = apply_filters( 'woocommerce_paytm_icon', '' ); 
         $this->has_fields         = false;
         $this->method_title       = __( 'Paytm', 'paytm-woo-gateway' );
         $this->method_description = __( 'Pay with Paytm using various methods (Credit Card, Debit Card, Net Banking, UPI, Paytm Wallet)', 'paytm-woo-gateway' );
+        $this->supports           = array( 'products' );
 
         // Load the settings.
         $this->init_form_fields();
@@ -28,11 +50,10 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
 
         // Actions
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-        // You can add more actions here, e.g., for handling order status changes
+        add_action( 'woocommerce_api_wc_gateway_paytm', array( $this, 'paytm_response' ) ); 
 
     }
 
-    // Initialize Gateway Settings Form Fields
     public function init_form_fields() {
         $this->form_fields = array(
             'enabled' => array(
@@ -79,6 +100,9 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
     public function process_payment( $order_id ) {
         $order = wc_get_order( $order_id );
 
+        // Reduce stock levels
+        wc_reduce_stock_levels($order_id); 
+
         // --- Collect Order Details ---
         $order_amount = $order->get_total(); 
         $cust_name = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
@@ -118,19 +142,31 @@ class WC_Gateway_Paytm extends WC_Payment_Gateway {
         // --- End Redirect ---
 
 
-        // Don't process the order yet, wait for Paytm response
+        // Mark as on-hold
+        $order->update_status('on-hold', __( 'Awaiting Paytm payment', 'paytm-woo-gateway' ));
+
+        // Remove cart
+        WC()->cart->empty_cart();
+
+        // Return thank you redirect
         return array(
             'result'   => 'success', 
-            'redirect' => $this->get_return_url( $order ) // Redirect to thank you page after payment
+            'redirect' => $this->get_return_url( $order ) 
         ); 
     }
 
-    // Helper function to get Paytm URL (production or test)
     private function get_paytm_url() {
         if ( $this->testmode ) {
             return "https://securegw-stage.paytm.in/order/process"; 
         } else {
             return "https://securegw.paytm.in/order/process"; 
         }
+    }
+
+    public function paytm_response() {
+        // TODO:
+        // 1. Verify the response from Paytm (checksum verification)
+        // 2. Update the order status based on the response
+        // 3. Redirect the customer to the appropriate page (success/failure)
     }
 }
