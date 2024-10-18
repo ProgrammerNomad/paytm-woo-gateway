@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Paytm WooCommerce Gateway
- * Plugin URI:  (Your Plugin URI)
+ * Plugin URI:  https://github.com/ProgrammerNomad/paytm-woo-gateway
  * Description:  Paytm Payment Gateway for WooCommerce
  * Version:     1.0.0
- * Author:      (Your Name)
- * Author URI:  (Your Website)
+ * Author:      Shiv Singh
+ * Author URI:  https://github.com/ProgrammerNomad 
  * Text Domain: paytm-woo-gateway
  * Domain Path: /languages
  */
